@@ -66,12 +66,6 @@ export default function Home() {
     setStats(null);
   }, [difficulty]);
 
-  const handleReset = useCallback(() => {
-    setGrid((g) => resetColors(g));
-    setVizState("idle");
-    setStats(null);
-  }, []);
-
   const handleClearCanvas = useCallback(() => {
     setGrid((g) => reset(g));
     setVizState("idle");
@@ -250,9 +244,6 @@ export default function Home() {
           {canResume(vizState) && (
             <button style={btn(false)} onClick={handleResume}>Resume</button>
           )}
-          <button style={btn(false, vizState === "idle")} onClick={handleReset}>
-            Reset Colors
-          </button>
           {canClear(vizState) && (
             <button style={btn(false)} onClick={handleClearCanvas}>
               Clear Canvas
