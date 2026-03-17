@@ -2,9 +2,11 @@
 
 import { useState, useCallback, useRef } from "react";
 import Grid from "@/components/Grid";
+import StatsPanel from "@/components/StatsPanel";
 import { createGrid, setCell, resetColors, Cell } from "@/lib/grid";
 import { handleCellClick, InteractionMode } from "@/lib/interaction";
 import { generateMaze } from "@/lib/maze";
+import { computeStats, Stats } from "@/lib/stats";
 import {
   getAlgorithm,
   canStart,
@@ -29,7 +31,7 @@ const btn = (active = false, disabled = false): React.CSSProperties => ({
   width: "100%",
 });
 
-const label: React.CSSProperties = {
+const sectionLabel: React.CSSProperties = {
   color: "#888",
   fontSize: "0.75rem",
   marginBottom: "0.25rem",
@@ -40,9 +42,10 @@ export default function Home() {
   const [grid, setGrid] = useState<Cell[][]>(() => createGrid(DEFAULT_SIZE));
   const [mode, setMode] = useState<InteractionMode>("set-points");
   const [difficulty, setDifficulty] = useState(0.5);
-  const [speed, setSpeed] = useState(50); // ms per step
+  const [speed, setSpeed] = useState(50);
   const [algorithm, setAlgorithm] = useState<AlgorithmName>("bfs");
   const [vizState, setVizState] = useState<VisualizationState>("idle");
+  const [stats, setStats] = useState<Stats | null>(null);
   const [isMouseDown, setIsMouseDown] = useState(false);
 
   const isPausedRef = useRef(false);
@@ -53,16 +56,19 @@ export default function Home() {
     setGridSize(newSize);
     setGrid(createGrid(newSize));
     setVizState("idle");
+    setStats(null);
   }, []);
 
   const handleGenerateMaze = useCallback(() => {
     setGrid((g) => generateMaze(g, difficulty));
     setVizState("idle");
+    setStats(null);
   }, [difficulty]);
 
   const handleReset = useCallback(() => {
     setGrid((g) => resetColors(g));
     setVizState("idle");
+    setStats(null);
   }, []);
 
   const handleMouseDown = useCallback(
@@ -84,8 +90,8 @@ export default function Home() {
 
   const handleStart = useCallback(() => {
     if (!canStart(vizState)) return;
+    setStats(null);
 
-    // Find start and end positions
     let startRow = -1, startCol = -1, endRow = -1, endCol = -1;
     setGrid((g) => {
       for (let r = 0; r < g.length; r++) {
@@ -97,12 +103,12 @@ export default function Home() {
       return resetColors(g);
     });
 
-    // Wait for state update then run
     setTimeout(() => {
       setGrid((g) => {
         if (startRow === -1 || endRow === -1) return g;
 
         const fn = getAlgorithm(algorithm);
+        const startTime = Date.now();
         const result = fn(g, startRow, startCol, endRow, endCol);
         isPausedRef.current = false;
         setVizState("running");
@@ -137,6 +143,8 @@ export default function Home() {
 
         function animatePath(j: number) {
           if (j >= result.path.length) {
+            const endTime = Date.now();
+            setStats(computeStats(result.explored.length, result.path.length, startTime, endTime));
             setVizState("completed");
             return;
           }
@@ -200,7 +208,7 @@ export default function Home() {
 
         {/* Algorithm */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-          <div style={label}>Algorithm</div>
+          <div style={sectionLabel}>Algorithm</div>
           <select
             value={algorithm}
             disabled={isRunning}
@@ -225,7 +233,7 @@ export default function Home() {
 
         {/* Playback */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-          <div style={label}>Visualization</div>
+          <div style={sectionLabel}>Visualization</div>
           {canStart(vizState) && (
             <button style={btn(true)} onClick={handleStart}>Start</button>
           )}
@@ -235,14 +243,19 @@ export default function Home() {
           {canResume(vizState) && (
             <button style={btn(false)} onClick={handleResume}>Resume</button>
           )}
-          <button style={btn(false, !isRunning && vizState === "idle")} onClick={handleReset}>
+          <button style={btn(false, vizState === "idle")} onClick={handleReset}>
             Reset Colors
           </button>
         </div>
 
+        {/* Stats */}
+        {stats && <StatsPanel stats={stats} />}
+
         {/* Speed */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-          <div style={label}>Speed: {speed <= 10 ? "Fast" : speed <= 50 ? "Medium" : "Slow"}</div>
+          <div style={sectionLabel}>
+            Speed: {speed <= 10 ? "Fast" : speed <= 50 ? "Medium" : "Slow"}
+          </div>
           <input
             type="range"
             min={5}
@@ -253,9 +266,9 @@ export default function Home() {
           />
         </div>
 
-        {/* Mode */}
+        {/* Interaction mode */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-          <div style={label}>Interaction</div>
+          <div style={sectionLabel}>Interaction</div>
           <button
             style={btn(mode === "set-points", isRunning)}
             disabled={isRunning}
@@ -274,7 +287,7 @@ export default function Home() {
 
         {/* Maze */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-          <div style={label}>Difficulty: {Math.round(difficulty * 100)}%</div>
+          <div style={sectionLabel}>Difficulty: {Math.round(difficulty * 100)}%</div>
           <input
             type="range"
             min={0}
@@ -291,7 +304,7 @@ export default function Home() {
 
         {/* Grid size */}
         <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
-          <div style={label}>Grid: {gridSize}×{gridSize}</div>
+          <div style={sectionLabel}>Grid: {gridSize}×{gridSize}</div>
           <input
             type="range"
             min={10}
