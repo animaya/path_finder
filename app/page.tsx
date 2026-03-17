@@ -1,25 +1,35 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import Grid from "@/components/Grid";
-import { createGrid, Cell } from "@/lib/grid";
+import { createGrid, setCell, resetColors, Cell } from "@/lib/grid";
 import { handleCellClick, InteractionMode } from "@/lib/interaction";
 import { generateMaze } from "@/lib/maze";
+import {
+  getAlgorithm,
+  canStart,
+  canPause,
+  canResume,
+  AlgorithmName,
+  VisualizationState,
+  ALGORITHM_LABELS,
+} from "@/lib/visualization";
 
 const DEFAULT_SIZE = 20;
 
-const btnStyle = (active: boolean): React.CSSProperties => ({
+const btn = (active = false, disabled = false): React.CSSProperties => ({
   padding: "0.5rem 1rem",
   borderRadius: "8px",
   border: active ? "1px solid #6366f1" : "1px solid #2a2a3a",
-  background: active ? "#6366f1" : "#1a1a24",
-  color: "#e8e8f0",
-  cursor: "pointer",
+  background: active ? "#6366f1" : disabled ? "#111118" : "#1a1a24",
+  color: disabled ? "#444" : "#e8e8f0",
+  cursor: disabled ? "not-allowed" : "pointer",
   fontSize: "0.875rem",
   fontWeight: active ? 600 : 400,
+  width: "100%",
 });
 
-const labelStyle: React.CSSProperties = {
+const label: React.CSSProperties = {
   color: "#888",
   fontSize: "0.75rem",
   marginBottom: "0.25rem",
@@ -30,33 +40,132 @@ export default function Home() {
   const [grid, setGrid] = useState<Cell[][]>(() => createGrid(DEFAULT_SIZE));
   const [mode, setMode] = useState<InteractionMode>("set-points");
   const [difficulty, setDifficulty] = useState(0.5);
+  const [speed, setSpeed] = useState(50); // ms per step
+  const [algorithm, setAlgorithm] = useState<AlgorithmName>("bfs");
+  const [vizState, setVizState] = useState<VisualizationState>("idle");
   const [isMouseDown, setIsMouseDown] = useState(false);
+
+  const isPausedRef = useRef(false);
   const cellSize = Math.floor(560 / gridSize) - 1;
+  const isRunning = vizState === "running" || vizState === "paused";
 
   const handleSizeChange = useCallback((newSize: number) => {
     setGridSize(newSize);
     setGrid(createGrid(newSize));
+    setVizState("idle");
   }, []);
 
   const handleGenerateMaze = useCallback(() => {
     setGrid((g) => generateMaze(g, difficulty));
+    setVizState("idle");
   }, [difficulty]);
+
+  const handleReset = useCallback(() => {
+    setGrid((g) => resetColors(g));
+    setVizState("idle");
+  }, []);
 
   const handleMouseDown = useCallback(
     (row: number, col: number) => {
+      if (isRunning) return;
       setIsMouseDown(true);
       setGrid((g) => handleCellClick(g, row, col, mode));
     },
-    [mode]
+    [mode, isRunning]
   );
 
   const handleMouseEnter = useCallback(
     (row: number, col: number) => {
-      if (!isMouseDown || mode !== "draw-walls") return;
+      if (!isMouseDown || mode !== "draw-walls" || isRunning) return;
       setGrid((g) => handleCellClick(g, row, col, mode));
     },
-    [isMouseDown, mode]
+    [isMouseDown, mode, isRunning]
   );
+
+  const handleStart = useCallback(() => {
+    if (!canStart(vizState)) return;
+
+    // Find start and end positions
+    let startRow = -1, startCol = -1, endRow = -1, endCol = -1;
+    setGrid((g) => {
+      for (let r = 0; r < g.length; r++) {
+        for (let c = 0; c < g[r].length; c++) {
+          if (g[r][c].state === "start") { startRow = r; startCol = c; }
+          if (g[r][c].state === "end") { endRow = r; endCol = c; }
+        }
+      }
+      return resetColors(g);
+    });
+
+    // Wait for state update then run
+    setTimeout(() => {
+      setGrid((g) => {
+        if (startRow === -1 || endRow === -1) return g;
+
+        const fn = getAlgorithm(algorithm);
+        const result = fn(g, startRow, startCol, endRow, endCol);
+        isPausedRef.current = false;
+        setVizState("running");
+
+        let i = 0;
+        const stepDelay = speed;
+
+        function animateExplored() {
+          if (isPausedRef.current) {
+            const resumeCheck = setInterval(() => {
+              if (!isPausedRef.current) {
+                clearInterval(resumeCheck);
+                animateExplored();
+              }
+            }, 100);
+            return;
+          }
+
+          if (i >= result.explored.length) {
+            animatePath(0);
+            return;
+          }
+
+          const [er, ec] = result.explored[i++];
+          setGrid((prev) => {
+            const cell = prev[er][ec];
+            if (cell.state === "start" || cell.state === "end") return prev;
+            return setCell(prev, er, ec, "explored");
+          });
+          setTimeout(animateExplored, stepDelay);
+        }
+
+        function animatePath(j: number) {
+          if (j >= result.path.length) {
+            setVizState("completed");
+            return;
+          }
+          const [pr, pc] = result.path[j];
+          setGrid((prev) => {
+            const cell = prev[pr][pc];
+            if (cell.state === "start" || cell.state === "end") return prev;
+            return setCell(prev, pr, pc, "path");
+          });
+          setTimeout(() => animatePath(j + 1), stepDelay);
+        }
+
+        setTimeout(animateExplored, stepDelay);
+        return g;
+      });
+    }, 50);
+  }, [vizState, algorithm, speed]);
+
+  const handlePause = useCallback(() => {
+    if (!canPause(vizState)) return;
+    isPausedRef.current = true;
+    setVizState("paused");
+  }, [vizState]);
+
+  const handleResume = useCallback(() => {
+    if (!canResume(vizState)) return;
+    isPausedRef.current = false;
+    setVizState("running");
+  }, [vizState]);
 
   return (
     <main
@@ -67,7 +176,7 @@ export default function Home() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "2.5rem",
+        gap: "2rem",
         padding: "2rem",
       }}
     >
@@ -76,55 +185,119 @@ export default function Home() {
         style={{
           display: "flex",
           flexDirection: "column",
-          gap: "1.5rem",
+          gap: "1.25rem",
           width: "220px",
           background: "var(--panel-bg)",
           border: "1px solid var(--border)",
           borderRadius: "12px",
           padding: "1.25rem",
+          flexShrink: 0,
         }}
       >
         <h1 style={{ color: "var(--foreground)", fontSize: "1rem", fontWeight: 700, margin: 0 }}>
-          PathFinder Visualizer
+          PathFinder
         </h1>
 
+        {/* Algorithm */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <div style={label}>Algorithm</div>
+          <select
+            value={algorithm}
+            disabled={isRunning}
+            onChange={(e) => setAlgorithm(e.target.value as AlgorithmName)}
+            style={{
+              background: "#1a1a24",
+              border: "1px solid #2a2a3a",
+              color: isRunning ? "#444" : "#e8e8f0",
+              borderRadius: "8px",
+              padding: "0.4rem 0.5rem",
+              fontSize: "0.8rem",
+              cursor: isRunning ? "not-allowed" : "pointer",
+            }}
+          >
+            {(Object.keys(ALGORITHM_LABELS) as AlgorithmName[]).map((name) => (
+              <option key={name} value={name}>
+                {ALGORITHM_LABELS[name]}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Playback */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <div style={label}>Visualization</div>
+          {canStart(vizState) && (
+            <button style={btn(true)} onClick={handleStart}>Start</button>
+          )}
+          {canPause(vizState) && (
+            <button style={btn(false)} onClick={handlePause}>Pause</button>
+          )}
+          {canResume(vizState) && (
+            <button style={btn(false)} onClick={handleResume}>Resume</button>
+          )}
+          <button style={btn(false, !isRunning && vizState === "idle")} onClick={handleReset}>
+            Reset Colors
+          </button>
+        </div>
+
+        {/* Speed */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <div style={label}>Speed: {speed <= 10 ? "Fast" : speed <= 50 ? "Medium" : "Slow"}</div>
+          <input
+            type="range"
+            min={5}
+            max={200}
+            value={speed}
+            onChange={(e) => setSpeed(Number(e.target.value))}
+            style={{ width: "100%" }}
+          />
+        </div>
+
         {/* Mode */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <div style={labelStyle}>Interaction mode</div>
-          <button style={btnStyle(mode === "set-points")} onClick={() => setMode("set-points")}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <div style={label}>Interaction</div>
+          <button
+            style={btn(mode === "set-points", isRunning)}
+            disabled={isRunning}
+            onClick={() => setMode("set-points")}
+          >
             Set Start / End
           </button>
-          <button style={btnStyle(mode === "draw-walls")} onClick={() => setMode("draw-walls")}>
+          <button
+            style={btn(mode === "draw-walls", isRunning)}
+            disabled={isRunning}
+            onClick={() => setMode("draw-walls")}
+          >
             Draw Walls
           </button>
         </div>
 
         {/* Maze */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <div style={labelStyle}>
-            Difficulty: {Math.round(difficulty * 100)}%
-          </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <div style={label}>Difficulty: {Math.round(difficulty * 100)}%</div>
           <input
             type="range"
             min={0}
             max={100}
             value={Math.round(difficulty * 100)}
+            disabled={isRunning}
             onChange={(e) => setDifficulty(Number(e.target.value) / 100)}
             style={{ width: "100%" }}
           />
-          <button style={btnStyle(false)} onClick={handleGenerateMaze}>
+          <button style={btn(false, isRunning)} disabled={isRunning} onClick={handleGenerateMaze}>
             Generate Maze
           </button>
         </div>
 
         {/* Grid size */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-          <div style={labelStyle}>Grid size: {gridSize}×{gridSize}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+          <div style={label}>Grid: {gridSize}×{gridSize}</div>
           <input
             type="range"
             min={10}
             max={50}
             value={gridSize}
+            disabled={isRunning}
             onChange={(e) => handleSizeChange(Number(e.target.value))}
             style={{ width: "100%" }}
           />
