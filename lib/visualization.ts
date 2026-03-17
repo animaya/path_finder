@@ -49,3 +49,7 @@ export function canPause(state: VisualizationState): boolean {
 export function canResume(state: VisualizationState): boolean {
   return state === "paused";
 }
+
+export function canClear(state: VisualizationState): boolean {
+  return state === "completed";
+}

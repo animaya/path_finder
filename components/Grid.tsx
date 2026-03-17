@@ -12,12 +12,12 @@ const CELL_COLORS: Record<CellState, string> = {
 };
 
 const CELL_GRADIENTS: Record<CellState, string> = {
-  empty: "radial-gradient(circle at 35% 35%, #2a2a3e, #141420)",
-  wall: "radial-gradient(circle at 35% 35%, #3d3d52, #1a1a2a)",
-  start: "radial-gradient(circle at 35% 35%, #4ade80, #15803d)",
-  end: "radial-gradient(circle at 35% 35%, #f87171, #b91c1c)",
-  explored: "radial-gradient(circle at 35% 35%, #7dd3fc, #0369a1)",
-  path: "radial-gradient(circle at 35% 35%, #fde047, #a16207)",
+  empty: "radial-gradient(circle at 35% 35%, #1a1a22, #0d0d14)",
+  wall: "radial-gradient(circle at 35% 35%, #4a4a52, #2e2e36)",
+  start: "radial-gradient(circle at 30% 28%, #bbf7d0 0%, #22c55e 35%, #15803d 100%)",
+  end: "radial-gradient(circle at 30% 28%, #fecaca 0%, #ef4444 35%, #b91c1c 100%)",
+  explored: "radial-gradient(circle at 30% 28%, #e0f2fe 0%, #38bdf8 35%, #0369a1 100%)",
+  path: "radial-gradient(circle at 30% 28%, #fef9c3 0%, #facc15 35%, #a16207 100%)",
 };
 
 function CandyCell({
@@ -41,9 +41,11 @@ function CandyCell({
         background: CELL_GRADIENTS[cell.state],
         borderRadius: "4px",
         boxShadow:
-          cell.state === "empty" || cell.state === "wall"
-            ? "inset 0 1px 2px rgba(255,255,255,0.05), inset 0 -1px 2px rgba(0,0,0,0.4)"
-            : `inset 0 2px 4px rgba(255,255,255,0.25), inset 0 -2px 4px rgba(0,0,0,0.4), 0 0 8px ${CELL_COLORS[cell.state]}88`,
+          cell.state === "empty"
+            ? "inset 0 1px 2px rgba(255,255,255,0.04), inset 0 -1px 2px rgba(0,0,0,0.5)"
+            : cell.state === "wall"
+            ? "inset 0 1px 3px rgba(255,255,255,0.12), inset 0 -2px 4px rgba(0,0,0,0.6)"
+            : `inset 0 2px 0px rgba(255,255,255,1), inset 1px 0px 0px rgba(255,255,255,0.8), inset -1px 0px 0px rgba(255,255,255,0.3), inset 0 -2px 4px rgba(0,0,0,0.45), 0 0 10px ${CELL_COLORS[cell.state]}aa`,
         cursor: "pointer",
         transition: "background 0.15s ease, box-shadow 0.15s ease",
         flexShrink: 0,

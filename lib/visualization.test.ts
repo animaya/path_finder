@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { getAlgorithm, canStart, canPause, canResume } from "./visualization";
+import { getAlgorithm, canStart, canPause, canResume, canClear } from "./visualization";
 import { createGrid } from "./grid";
 
 describe("getAlgorithm", () => {
@@ -43,5 +43,14 @@ describe("canResume", () => {
     expect(canResume("idle")).toBe(false);
     expect(canResume("running")).toBe(false);
     expect(canResume("completed")).toBe(false);
+  });
+});
+
+describe("canClear", () => {
+  it("returns true only for completed", () => {
+    expect(canClear("completed")).toBe(true);
+    expect(canClear("idle")).toBe(false);
+    expect(canClear("running")).toBe(false);
+    expect(canClear("paused")).toBe(false);
   });
 });

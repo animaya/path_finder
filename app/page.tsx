@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import Grid from "@/components/Grid";
 import StatsPanel from "@/components/StatsPanel";
-import { createGrid, setCell, resetColors, Cell } from "@/lib/grid";
+import { createGrid, setCell, resetColors, reset, Cell } from "@/lib/grid";
 import { handleCellClick, InteractionMode } from "@/lib/interaction";
 import { generateMaze } from "@/lib/maze";
 import { computeStats, Stats } from "@/lib/stats";
@@ -12,6 +12,7 @@ import {
   canStart,
   canPause,
   canResume,
+  canClear,
   AlgorithmName,
   VisualizationState,
   ALGORITHM_LABELS,
@@ -22,9 +23,9 @@ const DEFAULT_SIZE = 20;
 const btn = (active = false, disabled = false): React.CSSProperties => ({
   padding: "0.5rem 1rem",
   borderRadius: "8px",
-  border: active ? "1px solid #6366f1" : "1px solid #2a2a3a",
-  background: active ? "#6366f1" : disabled ? "#111118" : "#1a1a24",
-  color: disabled ? "#444" : "#e8e8f0",
+  border: active ? "1px solid #6366f1" : "1px solid #d0d0d8",
+  background: active ? "#6366f1" : disabled ? "#f5f5f8" : "#ffffff",
+  color: disabled ? "#bbb" : active ? "#fff" : "#111118",
   cursor: disabled ? "not-allowed" : "pointer",
   fontSize: "0.875rem",
   fontWeight: active ? 600 : 400,
@@ -32,7 +33,7 @@ const btn = (active = false, disabled = false): React.CSSProperties => ({
 });
 
 const sectionLabel: React.CSSProperties = {
-  color: "#888",
+  color: "#999",
   fontSize: "0.75rem",
   marginBottom: "0.25rem",
 };
@@ -67,6 +68,12 @@ export default function Home() {
 
   const handleReset = useCallback(() => {
     setGrid((g) => resetColors(g));
+    setVizState("idle");
+    setStats(null);
+  }, []);
+
+  const handleClearCanvas = useCallback(() => {
+    setGrid((g) => reset(g));
     setVizState("idle");
     setStats(null);
   }, []);
@@ -202,7 +209,7 @@ export default function Home() {
           flexShrink: 0,
         }}
       >
-        <h1 style={{ color: "var(--foreground)", fontSize: "1rem", fontWeight: 700, margin: 0 }}>
+        <h1 style={{ color: "#111118", fontSize: "1rem", fontWeight: 700, margin: 0 }}>
           PathFinder
         </h1>
 
@@ -214,9 +221,9 @@ export default function Home() {
             disabled={isRunning}
             onChange={(e) => setAlgorithm(e.target.value as AlgorithmName)}
             style={{
-              background: "#1a1a24",
-              border: "1px solid #2a2a3a",
-              color: isRunning ? "#444" : "#e8e8f0",
+              background: "#ffffff",
+              border: "1px solid #d0d0d8",
+              color: isRunning ? "#bbb" : "#111118",
               borderRadius: "8px",
               padding: "0.4rem 0.5rem",
               fontSize: "0.8rem",
@@ -246,6 +253,11 @@ export default function Home() {
           <button style={btn(false, vizState === "idle")} onClick={handleReset}>
             Reset Colors
           </button>
+          {canClear(vizState) && (
+            <button style={btn(false)} onClick={handleClearCanvas}>
+              Clear Canvas
+            </button>
+          )}
         </div>
 
         {/* Stats */}
