@@ -2,13 +2,26 @@
 
 import { useState, useCallback } from "react";
 import Grid from "@/components/Grid";
-import { createGrid, setCell, Cell } from "@/lib/grid";
+import { createGrid, Cell } from "@/lib/grid";
+import { handleCellClick, InteractionMode } from "@/lib/interaction";
 
 const DEFAULT_SIZE = 20;
+
+const btnStyle = (active: boolean): React.CSSProperties => ({
+  padding: "0.5rem 1rem",
+  borderRadius: "8px",
+  border: active ? "1px solid #6366f1" : "1px solid #2a2a3a",
+  background: active ? "#6366f1" : "#1a1a24",
+  color: "#e8e8f0",
+  cursor: "pointer",
+  fontSize: "0.875rem",
+  fontWeight: active ? 600 : 400,
+});
 
 export default function Home() {
   const [gridSize, setGridSize] = useState(DEFAULT_SIZE);
   const [grid, setGrid] = useState<Cell[][]>(() => createGrid(DEFAULT_SIZE));
+  const [mode, setMode] = useState<InteractionMode>("set-points");
   const [isMouseDown, setIsMouseDown] = useState(false);
   const cellSize = Math.floor(560 / gridSize) - 1;
 
@@ -17,17 +30,20 @@ export default function Home() {
     setGrid(createGrid(newSize));
   }, []);
 
-  const handleMouseDown = useCallback((row: number, col: number) => {
-    setIsMouseDown(true);
-    setGrid((g) => setCell(g, row, col, "wall"));
-  }, []);
+  const handleMouseDown = useCallback(
+    (row: number, col: number) => {
+      setIsMouseDown(true);
+      setGrid((g) => handleCellClick(g, row, col, mode));
+    },
+    [mode]
+  );
 
   const handleMouseEnter = useCallback(
     (row: number, col: number) => {
-      if (!isMouseDown) return;
-      setGrid((g) => setCell(g, row, col, "wall"));
+      if (!isMouseDown || mode !== "draw-walls") return;
+      setGrid((g) => handleCellClick(g, row, col, mode));
     },
-    [isMouseDown]
+    [isMouseDown, mode]
   );
 
   return (
@@ -55,6 +71,21 @@ export default function Home() {
         >
           PathFinder Visualizer
         </h1>
+
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            style={btnStyle(mode === "set-points")}
+            onClick={() => setMode("set-points")}
+          >
+            Set Start / End
+          </button>
+          <button
+            style={btnStyle(mode === "draw-walls")}
+            onClick={() => setMode("draw-walls")}
+          >
+            Draw Walls
+          </button>
+        </div>
 
         <Grid
           grid={grid}
