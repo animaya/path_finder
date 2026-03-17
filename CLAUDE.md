@@ -49,15 +49,28 @@
 ### Project Structure
 
 ```
-src/
-├── app/                      # short explanation
-│   ├── api/                 # short explanation
-│   │   ├── dir/          # short explanation
-│   │   ├── dir/  # short explanation
-│   │   └── dir/          # short explanation
-│   ├── dir/              # short explanation
-│   └── dir/              # short explanation
-│--continue dir tree
+/
+├── app/                      # Next.js App Router
+│   ├── globals.css           # global styles, CSS variables
+│   ├── layout.tsx            # root layout
+│   └── page.tsx              # main page (mounts PathfinderApp)
+├── components/               # React UI components
+│   ├── Grid.tsx              # renders the cell grid
+│   ├── Controls.tsx          # control panel (sliders, buttons, dropdown)
+│   └── StatsPanel.tsx        # post-run statistics display
+├── lib/                      # pure logic, no DOM/React
+│   ├── grid.ts               # grid data module (cell states, setCell, reset)
+│   ├── maze.ts               # Recursive Backtracker maze generator
+│   └── algorithms/           # pathfinding algorithm functions
+│       ├── bfs.ts
+│       ├── dfs.ts
+│       ├── dijkstra.ts
+│       ├── aStar.ts
+│       ├── greedyBestFirst.ts
+│       └── bidirectionalBfs.ts
+├── docs/                     # documentation
+├── tasks/                    # task tracking (todo.md, lessons.md)
+└── scripts/                  # utility scripts
 ```
 
 ## VPS Deployment
