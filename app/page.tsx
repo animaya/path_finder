@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Grid from "@/components/Grid";
 import { createGrid, Cell } from "@/lib/grid";
 import { handleCellClick, InteractionMode } from "@/lib/interaction";
+import { generateMaze } from "@/lib/maze";
 
 const DEFAULT_SIZE = 20;
 
@@ -18,10 +19,17 @@ const btnStyle = (active: boolean): React.CSSProperties => ({
   fontWeight: active ? 600 : 400,
 });
 
+const labelStyle: React.CSSProperties = {
+  color: "#888",
+  fontSize: "0.75rem",
+  marginBottom: "0.25rem",
+};
+
 export default function Home() {
   const [gridSize, setGridSize] = useState(DEFAULT_SIZE);
   const [grid, setGrid] = useState<Cell[][]>(() => createGrid(DEFAULT_SIZE));
   const [mode, setMode] = useState<InteractionMode>("set-points");
+  const [difficulty, setDifficulty] = useState(0.5);
   const [isMouseDown, setIsMouseDown] = useState(false);
   const cellSize = Math.floor(560 / gridSize) - 1;
 
@@ -29,6 +37,10 @@ export default function Home() {
     setGridSize(newSize);
     setGrid(createGrid(newSize));
   }, []);
+
+  const handleGenerateMaze = useCallback(() => {
+    setGrid((g) => generateMaze(g, difficulty));
+  }, [difficulty]);
 
   const handleMouseDown = useCallback(
     (row: number, col: number) => {
@@ -55,65 +67,77 @@ export default function Home() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        gap: "2rem",
+        gap: "2.5rem",
         padding: "2rem",
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-        <h1
-          style={{
-            color: "var(--foreground)",
-            fontSize: "1.5rem",
-            fontWeight: 700,
-            letterSpacing: "0.05em",
-            textAlign: "center",
-          }}
-        >
+      {/* Control Panel */}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "1.5rem",
+          width: "220px",
+          background: "var(--panel-bg)",
+          border: "1px solid var(--border)",
+          borderRadius: "12px",
+          padding: "1.25rem",
+        }}
+      >
+        <h1 style={{ color: "var(--foreground)", fontSize: "1rem", fontWeight: 700, margin: 0 }}>
           PathFinder Visualizer
         </h1>
 
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button
-            style={btnStyle(mode === "set-points")}
-            onClick={() => setMode("set-points")}
-          >
+        {/* Mode */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div style={labelStyle}>Interaction mode</div>
+          <button style={btnStyle(mode === "set-points")} onClick={() => setMode("set-points")}>
             Set Start / End
           </button>
-          <button
-            style={btnStyle(mode === "draw-walls")}
-            onClick={() => setMode("draw-walls")}
-          >
+          <button style={btnStyle(mode === "draw-walls")} onClick={() => setMode("draw-walls")}>
             Draw Walls
           </button>
         </div>
 
-        <Grid
-          grid={grid}
-          cellSize={cellSize}
-          onMouseDown={handleMouseDown}
-          onMouseEnter={handleMouseEnter}
-        />
+        {/* Maze */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div style={labelStyle}>
+            Difficulty: {Math.round(difficulty * 100)}%
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(difficulty * 100)}
+            onChange={(e) => setDifficulty(Number(e.target.value) / 100)}
+            style={{ width: "100%" }}
+          />
+          <button style={btnStyle(false)} onClick={handleGenerateMaze}>
+            Generate Maze
+          </button>
+        </div>
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "1rem",
-            color: "var(--foreground)",
-            fontSize: "0.875rem",
-          }}
-        >
-          <label>Grid size: {gridSize}×{gridSize}</label>
+        {/* Grid size */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div style={labelStyle}>Grid size: {gridSize}×{gridSize}</div>
           <input
             type="range"
             min={10}
             max={50}
             value={gridSize}
             onChange={(e) => handleSizeChange(Number(e.target.value))}
-            style={{ flex: 1 }}
+            style={{ width: "100%" }}
           />
         </div>
       </div>
+
+      {/* Grid */}
+      <Grid
+        grid={grid}
+        cellSize={cellSize}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+      />
     </main>
   );
 }
